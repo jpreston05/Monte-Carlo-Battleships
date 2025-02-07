@@ -8,6 +8,7 @@ nums_to_letters = {value:key for key, value in letters_to_nums.items()}
 
 player_ships_sunk = 0
 cpu_ships_sunk = 0
+hit_or_miss = ""
 
 cpu_ships = []
 player_ships = []
@@ -18,13 +19,20 @@ cpu_hits = []
 cpu_misses = []
 
 def print_board(board, board_name):
-    print(f"\n{board_name} board:")
+    print(f"\n{board_name} ship board:")
     print("  1 2 3 4 5 6 7 8 9 10")
     for i in range(10):
         print(nums_to_letters.get(i+1), end=' ')
         for j in range(10):
             print(board[i][j], end=" ")
         print('\n', end='')
+
+def print_result():
+    print(f"{hit_or_miss}!")
+
+def wait_for_input():
+    input("\nPress enter to continue...")
+    print("")
 
 def player_move():
     try:
@@ -53,7 +61,7 @@ def player_move():
 def generate_possible_board():
     global temp_ships
     temp_ships = []
-    if (cpu_misses and cpu_hits):
+    if (cpu_hits):
         pass
     else:
         for ship_length in ship_lengths:
@@ -70,6 +78,7 @@ def generate_possible_board():
 
 
 def cpu_move():
+    print("Calculating CPU move...")
     heatmap = np.zeros((10,10))
     number_of_runs = 10000
     progress_bar(0, number_of_runs)
@@ -85,6 +94,8 @@ def cpu_move():
                 heatmap[cpu_test_shot] += 1
         if current_run % 100 == 0:
             progress_bar(current_run, number_of_runs)
+    progress_bar(number_of_runs, number_of_runs)
+    print("")
 
     row, col = np.unravel_index(np.argmax(heatmap, axis=None), heatmap.shape)
     is_hit = check_hit("cpu", (row, col), player_ships)
@@ -120,24 +131,18 @@ def valid_ship(ship_coords, ships):
     return True
 
 def check_hit(player_type, move, ships):
-    global player_ships_sunk, cpu_ships_sunk
+    global player_ships_sunk, cpu_ships_sunk, hit_or_miss
     for ship in ships:
         if move in ship:
-            print("\n~~~~~~~~~~")
-            print("HIT!")
+            hit_or_miss = "HIT"
             ship.remove(move)
             if not ship:
                 if player_type == "player":
                     cpu_ships_sunk+=1
-                    print(f"The ship is sunk! {cpu_ships_sunk}/5 cpu ships sunk")
                 else:
                     player_ships_sunk+=1
-                    print(f"The ship is sunk! {player_ships_sunk}/5 of your ships have been sunk!")
-            print("~~~~~~~~~~")
             return True
-    print("\n~~~~~~~~~~")
-    print("MISS!")
-    print("~~~~~~~~~~")
+        hit_or_miss = "MISS"
     return False
 
 def check_player_ships(ship_name, ship_length):
@@ -205,8 +210,7 @@ print("██╔══██╗██╔══██║░░░██║░░�
 print("██████╦╝██║░░██║░░░██║░░░░░░██║░░░███████╗███████╗██████╔╝██║░░██║██║██║░░░░░██████╔╝")
 print("╚═════╝░╚═╝░░╚═╝░░░╚═╝░░░░░░╚═╝░░░╚══════╝╚══════╝╚═════╝░╚═╝░░╚═╝╚═╝╚═╝░░░░░╚═════╝░")
 print("\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|\033[34m Jack Preston \033[0m|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n")
-input("\033[33mEnter any key/s to begin...\033[0m")
-print("")
+input("\033[33mPress enter to begin...\033[0m")
 
 # print("PLACE YOUR SHIPS:")
 # print_board(player_board, "PLAYER")
@@ -225,11 +229,16 @@ game_over = False
 while not game_over:
     print_board(cpu_board, "CPU")
     player_move()
+    print_board(cpu_board, "CPU")
+    print_result()
     if cpu_ships_sunk == 5:
         game_over = True
         print("You Win!")
+    wait_for_input()
     cpu_move()
     print_board(player_board, "PLAYER")
+    print_result()
     if player_ships_sunk == 5:
         game_over = True
-        print("You Loose!")
+        print("You Lose!")
+    wait_for_input()
