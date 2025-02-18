@@ -1,8 +1,9 @@
 import random
 import numpy as np
 
-player_board = [["☐" for _ in range(10)] for _ in range(10)]
-cpu_board = [["☐" for _ in range(10)] for _ in range(10)]
+player_board = [["\033[34m☐\033[0m" for _ in range(10)] for _ in range(10)]
+cpu_board = [["\033[34m☐\033[0m" for _ in range(10)] for _ in range(10)]
+valid_cpu_shots = [(i,j) for j in range(10) for i in range(10)]
 letters_to_nums = {"A":1, "B":2, "C":3, "D":4, "E":5, "F":6, "G":7, "H":8, "I":9, "J":10}
 nums_to_letters = {value:key for key, value in letters_to_nums.items()}
 
@@ -14,8 +15,10 @@ cpu_ships = []
 player_ships = []
 temp_ships = []
 ship_lengths = [5, 4, 3, 3, 2]
+unsunk_ships_lengths = ship_lengths.copy()
 
 cpu_hits = []
+temp_cpu_hits = []
 cpu_misses = []
 cpu_sunk_ships = []
 
@@ -50,7 +53,7 @@ def player_move():
             if col < 1 or col > 10:
                 raise ValueError("Invalid column. Use numbers 1-10.")
 
-            if cpu_board[row-1][col-1] == "☐":
+            if cpu_board[row-1][col-1] == "\033[34m☐\033[0m":
                 is_hit = check_hit("player", (row-1,col-1), cpu_ships)
                 cpu_board[row-1][col-1] = "\033[31mX\033[0m" if is_hit else "0"
                 break
@@ -65,11 +68,13 @@ def player_move():
 def generate_possible_board():
     global temp_ships
     temp_ships = []
+    consecutive_invalid_ships = 0
     if (cpu_hits):
         hit_ship_created = False
         while not hit_ship_created:
             first_hit = cpu_hits[0]
-            if len(cpu_hits) > 1 and len(cpu_hits) < max(get_unsunk_ships_lengths(player_ships)):
+
+            if len(cpu_hits) > 1 and len(cpu_hits) < max(get_unsunk_ships_lengths(player_ships)) and consecutive_invalid_ships < 100 :
                 hit_ship_length = len(cpu_hits) + 1
                 rows = {hit[1] for hit in cpu_hits}
                 cols = {hit[0] for hit in cpu_hits}
@@ -84,11 +89,12 @@ def generate_possible_board():
                     max_row = max(hit[1] for hit in cpu_hits)
                     ship_extend = random.choice([-1, 1])
                     ship_coords = [(first_hit[0], min_row - 1 + i) for i in range(hit_ship_length)] if ship_extend == -1 else [(first_hit[0], max_row + 1 - (hit_ship_length - 1) + i) for i in range(hit_ship_length)]
-                    
-            else:
+
+            elif len(cpu_hits) <= 1:
                 hit_ship_length = min(get_unsunk_ships_lengths(player_ships))
                 coord_position = random.randint(0, 1)
                 ship_direction = random.choice(["horizontal", "vertical"])
+                #print(f"coord_position: {coord_position}, ship_direction: {ship_direction}")
                 if ship_direction == "horizontal":
                     start_col = first_hit[1] - coord_position
                     end_col = start_col + hit_ship_length - 1
@@ -97,15 +103,70 @@ def generate_possible_board():
                     start_row = first_hit[0] - coord_position
                     end_row = start_row + hit_ship_length - 1
                     ship_coords = [(i, first_hit[1]) for i in range(start_row, end_row + 1)]
+
+            else:
+                if not temp_cpu_hits: 
+                    temp_cpu_hits.append(cpu_hits[0])
+                if len(temp_cpu_hits) == 1:
+                    hit_ship_length = min(get_unsunk_ships_lengths(player_ships))
+                    coord_position = random.randint(0, 1)
+                    ship_direction = random.choice(["horizontal", "vertical"])
+                    #print(f"coord_position: {coord_position}, ship_direction: {ship_direction}")
+                    if ship_direction == "horizontal":
+                        start_col = first_hit[1] - coord_position
+                        end_col = start_col + hit_ship_length - 1
+                        ship_coords = [(first_hit[0], j) for j in range(start_col, end_col + 1)]
+                    else:
+                        start_row = first_hit[0] - coord_position
+                        end_row = start_row + hit_ship_length - 1
+                        ship_coords = [(i, first_hit[1]) for i in range(start_row, end_row + 1)]
+                else:
+                    hit_ship_length = len(temp_cpu_hits) + 1
+                    rows = {hit[1] for hit in temp_cpu_hits}
+                    cols = {hit[0] for hit in temp_cpu_hits}
+
+                    if len(rows) == 1:	
+                        min_col = min(hit[0] for hit in temp_cpu_hits)
+                        max_col = max(hit[0] for hit in temp_cpu_hits)
+                        ship_extend = random.choice([-1, 1])
+                        ship_coords = [(min_col - 1 + i, first_hit[1]) for i in range(hit_ship_length)] if ship_extend == -1 else [(max_col + 1 - (hit_ship_length - 1) + i, first_hit[1]) for i in range(hit_ship_length)]
+                    elif len(cols) == 1:
+                        min_row = min(hit[1] for hit in temp_cpu_hits)
+                        max_row = max(hit[1] for hit in temp_cpu_hits)
+                        ship_extend = random.choice([-1, 1])
+                        ship_coords = [(first_hit[0], min_row - 1 + i) for i in range(hit_ship_length)] if ship_extend == -1 else [(first_hit[0], max_row + 1 - (hit_ship_length - 1) + i) for i in range(hit_ship_length)]
+
+
+                print(len(cpu_hits), min(get_unsunk_ships_lengths(player_ships)))
+                print("hits on multiple ships")
+                hit_ship_length = max(get_unsunk_ships_lengths(player_ships))
+                rows = {hit[1] for hit in cpu_hits}
+                cols = {hit[0] for hit in cpu_hits}
+
+                if len(cols) == 1:	
+                    min_col = min(hit[0] for hit in cpu_hits)
+                    max_col = max(hit[0] for hit in cpu_hits)
+                    ship_extend = random.choice([-1, 1])
+                    ship_coords = [(min_col - 1 + i, first_hit[1]) for i in range(hit_ship_length)] if ship_extend == -1 else [(max_col + 1 - (hit_ship_length - 1) + i, first_hit[1]) for i in range(hit_ship_length)]
+                elif len(rows) == 1:
+                    min_row = min(hit[1] for hit in cpu_hits)
+                    max_row = max(hit[1] for hit in cpu_hits)
+                    ship_extend = random.choice([-1, 1])
+                    ship_coords = [(first_hit[0], min_row - 1 + i) for i in range(hit_ship_length)] if ship_extend == -1 else [(first_hit[0], max_row + 1 - (hit_ship_length - 1) + i) for i in range(hit_ship_length)]
+
+
             
-            if valid_ship(ship_coords, temp_ships) and not any(coord in cpu_misses for coord in ship_coords) and not any(coord in cpu_sunk_ships for coord in ship_coords) :
+            if valid_ship(ship_coords, temp_ships) and not any(coord in cpu_misses for coord in ship_coords) and not any(coord in cpu_sunk_ships for coord in ship_coords) and not any(coord in cpu_hits for coord in ship_coords):
+                consecutive_invalid_ships = 0
                 temp_ships.append(ship_coords)
                 hit_ship_created = True
+            else:
+                consecutive_invalid_ships += 1
     else:
-        for ship_length in ship_lengths:
+        for ship_length in get_unsunk_ships_lengths(player_ships):
             ship_created = False
             while not ship_created:
-                ship_start = (random.randint(0,9), random.randint(0,9))
+                ship_start = random.choice(valid_cpu_shots)
                 ship_direction = random.randint(1,4)
 
                 ship_coords = create_ship(ship_start, ship_direction, ship_length)
@@ -139,21 +200,20 @@ def cpu_move():
 
     row, col = np.unravel_index(np.argmax(heatmap, axis=None), heatmap.shape)
     print(f"\nCPU shoots at: {nums_to_letters[row+1]},{col+1}")
+    valid_cpu_shots.remove((row, col))
     is_hit = check_hit("cpu", (row, col), player_ships)
-    if is_hit and player_board[row][col] != "H":
-        # player_board[row][col] = "\033[31mX\033[0m"
-        player_board[row][col] = "H"
+    if is_hit and player_board[row][col] != "\033[31mX\033[0m":
+        player_board[row][col] = "\033[31mX\033[0m"
+        #player_board[row][col] = "H"
         cpu_hits.append((row,col))
-    elif player_board[row][col] not in ["H", "X"]:
+    elif player_board[row][col] not in ["\033[31mX\033[0m", "\033[90mX\033[0m"]:
         player_board[row][col] = "0"
         cpu_misses.append((row,col))
 
 def update_hits():
-    print("Updating hits...")
     sunk_ship_hits = [hit for hit in cpu_hits if not any(hit in ship for ship in player_ships)]
     for hit in sunk_ship_hits:
         if hit in cpu_hits:
-            print(f"Removing {hit} from hits.")
             cpu_sunk_ships.append(hit)
             cpu_hits.remove(hit)
 
@@ -194,7 +254,6 @@ def check_hit(player_type, move, ships):
                 else:
                     player_ships_sunk+=1
                     print(f"CPU sunk a ship! {player_ships_sunk}/5 ships sunk.")
-                    update_hits()
             return True
     return False
 
@@ -224,7 +283,7 @@ def check_player_ships(ship_name, ship_length):
                 player_ships.append(ship_coords)
                 for coord in ship_coords:
                     row, col = coord
-                    player_board[row][col] = "X"
+                    player_board[row][col] = "\033[90mX\033[0m"
                 ship_created = True
             else:
                 print("\nThat is not a valid ship placement, try again.")
@@ -235,8 +294,7 @@ def check_player_ships(ship_name, ship_length):
             print(f"Unexpected error: {e}")
 
 def get_unsunk_ships_lengths(ships):
-    unsunk_ships_lengths = [len(ship) for ship in ships if ship]
-    return unsunk_ships_lengths
+    return [ship_lengths[i] for i in range(len(ships)) if ships[i]]  
 
 def progress_bar(progress, total):
     percentage = 100 * (progress/float(total))
@@ -289,17 +347,21 @@ game_over = False
 while not game_over:
     print_board(cpu_board, "CPU")
     player_move()
-    print_board(cpu_board, "CPU")
     print_result()
+    print_board(cpu_board, "CPU")
     if cpu_ships_sunk == 5:
         game_over = True
         print("You Win!")
+        break
     wait_for_input()
+    previous_player_ships_sunk = player_ships_sunk
     cpu_move()
-    print_board(player_board, "PLAYER")
+    if previous_player_ships_sunk < player_ships_sunk:
+        update_hits()
     print_result()
-    print(cpu_hits)
+    print_board(player_board, "PLAYER")
     if player_ships_sunk == 5:
         game_over = True
         print("You Lose!")
+        break
     wait_for_input()
