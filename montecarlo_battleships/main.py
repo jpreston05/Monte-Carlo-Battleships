@@ -90,7 +90,7 @@ def generate_possible_board():
                     ship_coords = [(first_hit[0], min_row - 1 + i) for i in range(hit_ship_length)] if ship_extend == -1 else [(first_hit[0], max_row + 1 - (hit_ship_length - 1) + i) for i in range(hit_ship_length)]
 
             elif len(cpu_hits) <= 1:
-                hit_ship_length = min(get_unsunk_ships_lengths(player_ships))
+                hit_ship_length = 2
                 coord_position = random.randint(0, 1)
                 ship_direction = random.choice(["horizontal", "vertical"])
                 if ship_direction == "horizontal":
@@ -197,22 +197,15 @@ def update_hits():
     cpu_hits = list(set(cpu_hits) | set(temp_cpu_hits))
     temp_cpu_hits.clear()
 
-    print("Combined cpu_hits: ", cpu_hits)
-
     sunk_ships = []
     for ship in player_ships_constants:
         if all(hit in cpu_hits for hit in ship):
             sunk_ships.extend(ship)
 
-    print("Identified sunk ships: ", sunk_ships)
-
     cpu_sunk_ships.extend(sunk_ships)
     cpu_hits = [hit for hit in cpu_hits if hit not in sunk_ships]
 
     cpu_hits = list(set(cpu_hits) - set(cpu_sunk_ships))
-
-    print("Updated cpu hits: ", cpu_hits)
-    print("Updated cpu sunk ships: ", cpu_sunk_ships)
 
 def create_ship(ship_start, ship_direction, ship_length):
     row, col = ship_start
