@@ -1,43 +1,43 @@
 # Monte Carlo Battleships
 Monte Carlo Battleships is an advanced implementation of the classic game Battleship, utilizing probability-based targeting to optimize gameplay. The program employs Monte Carlo simulations to predict ship locations and improve shot accuracy over time.
 
-Features
+# Features
 
-Monte Carlo Simulation: Runs multiple simulations to estimate high-probability target areas.
+  - Monte Carlo Simulation: Runs multiple simulations to estimate high-probability target areas.
 
-Smart Targeting System: Adjusts strategy dynamically based on previous hits and misses.
+  - Smart Targeting System: Adjusts strategy dynamically based on previous hits and misses.
 
-Efficient Search Algorithm: Reduces random shots and focuses on high-likelihood zones.
+  - Efficient Search Algorithm: Reduces random shots and focuses on high-likelihood zones.
 
-Adaptive Strategy: Identifies ship orientations and refines targeting accordingly.
+  - Adaptive Strategy: Identifies ship orientations and refines targeting accordingly.
 
-Valid Move Enforcement: Ensures shots remain within the grid and adhere to game rules.
+  - Valid Move Enforcement: Ensures shots remain within the grid and adhere to game rules.
 
-Installation
+# Installation
 
 Clone the repository:
 
-git clone https://github.com/jpreston05/monte-carlo-battleships.git
+  git clone https://github.com/jpreston05/monte-carlo-battleships.git
 
 Navigate to the project directory:
 
-cd monte-carlo-battleships
+  cd monte-carlo-battleships
 
 Install dependencies:
 
-pip install numpy
+  pip install numpy
 
 Alternatively, you can add numpy to a requirements.txt file and install using:
 
-pip install -r requirements.txt
+  pip install -r requirements.txt
 
-Usage
+# Usage
 
 Run the game with:
 
-python battleships.py
+  python battleships.py
 
-How It Works
+# How It Works
 
 The program initializes a standard Battleship board.
 
@@ -47,19 +47,19 @@ The CPU refines its targeting strategy, shifting from probability-based selectio
 
 The game continues until all ships are sunk.
 
-Future Improvements
+# Future Improvements
 
 Improving the generate_possible_board function to work faster under specific edge cases
 
-License
+# License
 
 This project is licensed under the MIT License. See the LICENSE file for details.
 
-Contributing
+# Contributing
 
 Contributions are welcome! If you have ideas for improvements or find bugs, feel free to open an issue or submit a pull request.
 
-Author
+# Author
 
-Your Name
+Jack Preston
 
