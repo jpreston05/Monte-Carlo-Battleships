@@ -1,15 +1,21 @@
+#imporing the necessary libraries
 import random
 import numpy as np
+import re
 
+#defining the global variables
 player_board = [["\033[34m☐\033[0m" for _ in range(10)] for _ in range(10)]
 cpu_board = [["\033[34m☐\033[0m" for _ in range(10)] for _ in range(10)]
+
 valid_cpu_shots = [(i,j) for j in range(10) for i in range(10)]
+
 letters_to_nums = {"A":1, "B":2, "C":3, "D":4, "E":5, "F":6, "G":7, "H":8, "I":9, "J":10}
 nums_to_letters = {value:key for key, value in letters_to_nums.items()}
 
 player_ships_sunk = 0
 cpu_ships_sunk = 0
 hit_or_miss = ""
+consecutive_invalid_ships = 0
 
 cpu_ships = []
 player_ships = []
@@ -23,36 +29,68 @@ cpu_misses = []
 cpu_sunk_ships = []
 
 def print_board(board, board_name):
+    """
+    print_board prints a board corresponding to the board list it is parsed.
+
+    :board: a 2D list of strings representing the board
+    :board_name: the name of the board (player or cpu)
+    """ 
+    #labels the board with either the player or cpu board
     print(f"\n{board_name} ship board:")
+    #prints the column numbers
     print("  1 2 3 4 5 6 7 8 9 10")
+    #prints the board with the row letters (prints 10 rows)
     for i in range(10):
+        #prints the current row letter from the dictionary
         print(nums_to_letters.get(i+1), end=' ')
+        #prints the current row of the board
         for j in range(10):
             print(board[i][j], end=" ")
+        #prints a new line after each row
         print('\n', end='')
 
 def print_result():
+    """
+    print_result prints either hit or miss depending on the result of the current turn.
+    """ 
+    #prints a line of 10 "~" before printing the most recent result, following by another line of 10 "~"
     print("\n"+("~" * 10))
     print(f"{hit_or_miss}!")
     print("~" * 10)
 
 def wait_for_input():
+    """
+    wait_for_input prints an input to make sure the user is ready to continue. Sometimes the 
+    game can be too fast for the user to keep up, so wait_for_input breaks things up.
+    """ 
+    #waits for the user to press enter before continuing
     input("\nPress enter to continue...")
     print("")
 
 def player_move():
+    """
+    player_move prompts the user to make a move and checks if the move is valid.
+    """ 
     while True:
+        #try block to catch any errors that may occur
         try:
-            move = input("Make a Move! (eg: A,1): ").strip()
-            row, col = move.split(",")
-            col = int(col)
-            row = letters_to_nums.get(row.upper())
+            #prompts the user to make a move and strips any whitespace
+            move = input("Make a Move! (eg, A1): ").strip().upper()
+            match = re.match(r"([A-J])(\d+)", move)
+            #splits the move into a row and column
 
-            if row is None:
-                raise ValueError("Invalid row. Use letters A-J.")
-            if col < 1 or col > 10:
-                raise ValueError("Invalid column. Use numbers 1-10.")
+            if match:
+                row, col = match.groups()
+                col = int(col)
+                #converts the row to the corresponding number using the dictionary
+                row = letters_to_nums.get(row)
+                #checks if the column is valid
+                if col < 1 or col > 10:
+                    raise ValueError("Invalid column. Use numbers 1-10.")
+            else:
+                raise ValueError("Invalid move. Use letters A-J and numbers 1-10 (eg, A1).")
 
+            #checks if the move is a hit or miss or if the user has already guessed the location
             if cpu_board[row-1][col-1] == "\033[34m☐\033[0m":
                 is_hit = check_hit("player", (row-1,col-1), cpu_ships)
                 cpu_board[row-1][col-1] = "\033[31mX\033[0m" if is_hit else "0"
@@ -60,54 +98,72 @@ def player_move():
             else:
                 print("You already guessed here!")
 
+        #catches any errors that may occur
         except ValueError as ve:
             print(f"Invalid move: {ve}")
         except Exception as e:
             print(f"Unexpected error: {e}")
 
 def generate_possible_board():
-    global temp_ships
+    """
+    generate_possible_board generates a possible board for the cpu to make a move.
+    """ 
+    global temp_ships, consecutive_invalid_ships
     temp_ships = []
-    consecutive_invalid_ships = 0
+    #if cpu_hits contains hits. If true, the cpu will try to create a ship based on the hits and the current board state
     if (cpu_hits):
         hit_ship_created = False
         while not hit_ship_created:
             first_hit = cpu_hits[0]
+            #if there are more than 1 hits and the length of the hits is less than the max length of the unsunk ships and the amount consecutive invalid ships is less than 1000
             if len(cpu_hits) > 1 and len(cpu_hits) < max(get_unsunk_ships_lengths(player_ships)) and consecutive_invalid_ships < 1000 :
                 hit_ship_length = len(cpu_hits) + 1
+                #checks if the rows and columns are the same by placing the hits in a set
                 rows = {hit[1] for hit in cpu_hits}
                 cols = {hit[0] for hit in cpu_hits}
 
+                #if the rows are the same, the ship is placed horizontally
                 if len(rows) == 1:	
                     min_col = min(hit[0] for hit in cpu_hits)
                     max_col = max(hit[0] for hit in cpu_hits)
+                    #randomly chooses to extend the ship to the left or right
                     ship_extend = random.choice([-1, 1])
                     ship_coords = [(min_col - 1 + i, first_hit[1]) for i in range(hit_ship_length)] if ship_extend == -1 else [(max_col + 1 - (hit_ship_length - 1) + i, first_hit[1]) for i in range(hit_ship_length)]
+                #if the columns are the same, the ship is placed vertically
                 elif len(cols) == 1:
                     min_row = min(hit[1] for hit in cpu_hits)
                     max_row = max(hit[1] for hit in cpu_hits)
+                    #randomly chooses to extend the ship up or down
                     ship_extend = random.choice([-1, 1])
                     ship_coords = [(first_hit[0], min_row - 1 + i) for i in range(hit_ship_length)] if ship_extend == -1 else [(first_hit[0], max_row + 1 - (hit_ship_length - 1) + i) for i in range(hit_ship_length)]
 
             elif len(cpu_hits) <= 1:
-                hit_ship_length = 2
-                coord_position = random.randint(0, 1)
+                #assumes the ship is the length of the smallest unsunk ship
+                hit_ship_length = min(get_unsunk_ships_lengths(player_ships))
+                #randomly chooses where to place the hit on the hypothetical ship
+                coord_position = random.randint(0, hit_ship_length-1)
+                #randomly chooses to place the ship horizontally or vertically
                 ship_direction = random.choice(["horizontal", "vertical"])
+                #if the ship is placed horizontally, the ship is created, with the new position to the left or right of the hit
                 if ship_direction == "horizontal":
                     start_col = first_hit[1] - coord_position
                     end_col = start_col + hit_ship_length - 1
                     ship_coords = [(first_hit[0], j) for j in range(start_col, end_col + 1)]
+                #if the ship is placed vertically, the ship is created, with the new position above or below the hit
                 else:
                     start_row = first_hit[0] - coord_position
                     end_row = start_row + hit_ship_length - 1
                     ship_coords = [(i, first_hit[1]) for i in range(start_row, end_row + 1)]
-
+            #if the first two conditions are not met, the cpu assumes that it has hit across multiple ships and must reevaluate the ship placement
             else:   
+                #if the temp_cpu_hits list is empty, the cpu assumes adds its first hit from cpu_hits to the list
                 if not temp_cpu_hits: 
                     temp_cpu_hits.append(cpu_hits[0])
                 if len(temp_cpu_hits) == 1:
+                    #assumes the ship is the length of the smallest unsunk ship
                     hit_ship_length = min(get_unsunk_ships_lengths(player_ships))
-                    coord_position = random.randint(0, 1)
+                    #randomly chooses where to place the hit on the hypothetical ship
+                    coord_position = random.randint(0, hit_ship_length-1)
                     ship_direction = random.choice(["horizontal", "vertical"])
                     if ship_direction == "horizontal":
                         start_col = first_hit[1] - coord_position
@@ -134,7 +190,8 @@ def generate_possible_board():
                         ship_coords = [(first_hit[0], min_row - 1 + i) for i in range(hit_ship_length)] if ship_extend == -1 else [(first_hit[0], max_row + 1 - (hit_ship_length - 1) + i) for i in range(hit_ship_length)]
             
             if valid_ship(ship_coords, temp_ships) and not any(coord in cpu_misses for coord in ship_coords) and not any(coord in cpu_sunk_ships for coord in ship_coords):
-                consecutive_invalid_ships = 0
+                if not(temp_cpu_hits):
+                    consecutive_invalid_ships = 0 
                 temp_ships.append(ship_coords)
                 hit_ship_created = True
             else:
@@ -231,7 +288,7 @@ def valid_ship(ship_coords, ships):
     return True
 
 def check_hit(player_type, move, ships):
-    global player_ships_sunk, cpu_ships_sunk, hit_or_miss
+    global player_ships_sunk, cpu_ships_sunk, hit_or_miss, consecutive_invalid_ships
     hit_or_miss = "MISS"
     for ship in ships:
         if move in ship:
@@ -244,6 +301,7 @@ def check_hit(player_type, move, ships):
                 else:
                     player_ships_sunk+=1
                     print(f"CPU sunk a ship! {player_ships_sunk}/5 ships sunk.")
+                    consecutive_invalid_ships = 0
             return True
     return False
 
@@ -251,16 +309,22 @@ def check_player_ships(ship_name, ship_length):
     ship_created = False
     while not ship_created:
         try:
-            ship_start = input(f"\nShip: {ship_name}\nLength: {ship_length}\nEnter Starting Coordinate: ")
+            ship_start = input(f"\nShip: {ship_name}\nLength: {ship_length}\nEnter Starting Coordinate (eg A1): ").strip().upper()
             if not ship_start:
                 raise ValueError("Input cannot be empty.")
 
-            row, col = ship_start.split(",")
-            col = int(col)-1
-            row = letters_to_nums.get(row.upper())-1
-
-            if row is None or not (0 <= col <=9):
-                raise ValueError("Invalid coordinates.")
+            match = re.match(r"([A-J])(\d+)", ship_start)
+            #splits the move into a row and column
+            if match:
+                row, col = match.groups()
+                col = int(col)-1
+                #converts the row to the corresponding number using the dictionary
+                row = letters_to_nums.get(row)-1
+                #checks if the column is valid
+                if col < 0 or col > 9:
+                    raise ValueError("Invalid column. Use numbers 1-10.")
+            else:
+                raise ValueError("Invalid move. Use letters A-J and numbers 1-10 (eg, A1).")
 
             ship_direction = int(input("Enter ship direction (1 = Up, 2 = Down, 3 = Left, 4 = Right): "))
 
