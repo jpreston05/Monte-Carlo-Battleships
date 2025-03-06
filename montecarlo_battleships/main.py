@@ -53,9 +53,16 @@ def print_result():
     """
     print_result prints either hit or miss depending on the result of the current turn.
     """ 
+    global initial_player_ships_sunk, initial_cpu_ships_sunk
     #prints a line of 10 "~" before printing the most recent result, following by another line of 10 "~"
     print("\n"+("~" * 10))
     print(f"{hit_or_miss}!")
+    if initial_player_ships_sunk != player_ships_sunk:
+        print(f"CPU sunk a ship! {player_ships_sunk}/5 ships sunk.")
+        initial_player_ships_sunk = player_ships_sunk
+    elif initial_cpu_ships_sunk != cpu_ships_sunk:
+        print(f"You sunk a ship! {cpu_ships_sunk}/5 ships sunk.")
+        initial_cpu_ships_sunk = cpu_ships_sunk
     print("~" * 10)
 
 def wait_for_input():
@@ -138,10 +145,10 @@ def generate_possible_board():
                     ship_coords = [(first_hit[0], min_row - 1 + i) for i in range(hit_ship_length)] if ship_extend == -1 else [(first_hit[0], max_row + 1 - (hit_ship_length - 1) + i) for i in range(hit_ship_length)]
 
             elif len(cpu_hits) <= 1:
-                #assumes the ship is the length of the smallest unsunk ship
-                hit_ship_length = min(get_unsunk_ships_lengths(player_ships))
+                #assumes the ship is the length of 2
+                hit_ship_length = 2
                 #randomly chooses where to place the hit on the hypothetical ship
-                coord_position = random.randint(0, hit_ship_length-1)
+                coord_position = random.randint(0, 1)
                 #randomly chooses to place the ship horizontally or vertically
                 ship_direction = random.choice(["horizontal", "vertical"])
                 #if the ship is placed horizontally, the ship is created, with the new position to the left or right of the hit
@@ -160,10 +167,10 @@ def generate_possible_board():
                 if not temp_cpu_hits: 
                     temp_cpu_hits.append(cpu_hits[0])
                 if len(temp_cpu_hits) == 1:
-                    #assumes the ship is the length of the smallest unsunk ship
-                    hit_ship_length = min(get_unsunk_ships_lengths(player_ships))
+                    #assumes the ship is the length of 2
+                    hit_ship_length = 2
                     #randomly chooses where to place the hit on the hypothetical ship
-                    coord_position = random.randint(0, hit_ship_length-1)
+                    coord_position = random.randint(0, 1)
                     ship_direction = random.choice(["horizontal", "vertical"])
                     if ship_direction == "horizontal":
                         start_col = first_hit[1] - coord_position
@@ -232,21 +239,23 @@ def cpu_move():
     print("")
 
     row, col = np.unravel_index(np.argmax(heatmap, axis=None), heatmap.shape)
-    print(f"\nCPU shoots at: {nums_to_letters[row+1]},{col+1}")
     valid_cpu_shots.remove((row, col))
     is_hit = check_hit("cpu", (row, col), player_ships)
     if is_hit and player_board[row][col] != "\033[31mX\033[0m":
         player_board[row][col] = "\033[31mX\033[0m"
-        #player_board[row][col] = "H"
         if len(temp_cpu_hits) == 0:
             cpu_hits.append((row,col))
-            print("CPU hits: ", cpu_hits)
         else:
             temp_cpu_hits.append((row,col))
-            print("Temp cpu hits: ", temp_cpu_hits)
     elif player_board[row][col] not in ["\033[31mX\033[0m", "\033[90mX\033[0m"]:
         player_board[row][col] = "0"
         cpu_misses.append((row,col))
+    print_board(player_board, "PLAYER")
+    print(f"\nCPU shoots at: {nums_to_letters[row+1]},{col+1}")
+    if previous_player_ships_sunk < player_ships_sunk:
+        update_hits()
+    print_result()
+
 
 def update_hits():
     global cpu_hits
@@ -297,10 +306,8 @@ def check_hit(player_type, move, ships):
             if not ship:
                 if player_type == "player":
                     cpu_ships_sunk+=1
-                    print(f"You sunk a ship! {cpu_ships_sunk}/5 ships sunk.")
                 else:
                     player_ships_sunk+=1
-                    print(f"CPU sunk a ship! {player_ships_sunk}/5 ships sunk.")
                     consecutive_invalid_ships = 0
             return True
     return False
@@ -398,13 +405,16 @@ player_ships_constants = [ship.copy() for ship in player_ships]
 #Calls the function to generate the cpu ships
 generate_cpu_ships()
 
+initial_player_ships_sunk = player_ships_sunk
+initial_cpu_ships_sunk = cpu_ships_sunk
+
 #Game loop
 game_over = False
 while not game_over:
     print_board(cpu_board, "CPU")
     player_move()
-    print_result()
     print_board(cpu_board, "CPU")
+    print_result()
     if cpu_ships_sunk == 5:
         game_over = True
         print("\n"+("~" * 10))
@@ -414,10 +424,6 @@ while not game_over:
     wait_for_input()
     previous_player_ships_sunk = player_ships_sunk
     cpu_move()
-    if previous_player_ships_sunk < player_ships_sunk:
-        update_hits()
-    print_result()
-    print_board(player_board, "PLAYER")
     if player_ships_sunk == 5:
         game_over = True
         print("\n"+("~" * 10))
